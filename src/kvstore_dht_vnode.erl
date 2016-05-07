@@ -73,7 +73,8 @@ incrby(PrefList, ReqId, KeyName, Val) ->
 %%%===================================================================
 
 init([Partition]) ->
-    {ok, #state { partition=Partition, keys=dict:new() }}.
+    {ok, #state { partition=Partition,
+    keys=dict:new()}}.
 
 handle_command({get, ReqId, KeyName}, _Sender, #state{partition=_, keys=Keys}=State) ->
     Reply =
@@ -136,6 +137,3 @@ handle_exit(_Pid, _Reason, State) ->
 
 terminate(_Reason, _State) ->
     ok.
-
-
-
