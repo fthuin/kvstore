@@ -14,6 +14,7 @@
 
 -define(BUCKET, "default").
 -define(TIMEOUT, 5000).
+-define(ROUNDLENGTH, 25000).
 
 -record(state, {pid, roundnbr, decision, nbrofplayers, position, distancetocover, energy, speed, roundlength}).
 
@@ -55,7 +56,7 @@ start_race(Pid, N) ->
     Var = init_game_state(N,N,[]),
     ok = kvstore:put(integer_to_list(Pid), {speed, 0}),
     io:format("~p~n", [Var]),
-    beb_loop(Var, Pid),
+    beb_loop(Var, Pid, 0),
     {ok, start_race}.
 
 %%%===================================================================
@@ -83,13 +84,13 @@ init_game_state(I, N, Acc) ->
         0 -> Acc;
         _ -> Var = #state { pid=I,
                             roundnbr=0,
-                            decision={speed, 0},
+                            decision={0, {speed, 0}},
                             nbrofplayers=N,
                             position=0,
                             distancetocover=100,
                             energy=112,
                             speed=0,
-                            roundlength=10
+                            roundlength=?ROUNDLENGTH
                             },
             init_game_state(I-1, N, [Var | Acc])
     end.
@@ -106,25 +107,35 @@ print_state(State) ->
     io:format("Round length: ~p~n", [State#state.roundlength]),
     io:format("----------------------------------------------------------~n").
 
-wait_for_all_decisions() ->
-    receive
-        {ok,coucou} ->
-            io:format("ok, coucou.")
+wait_for_all_decisions(N, RoundNbr) ->
+    case N of
+        0 -> ok;
+        _ ->
+            case kvstore:get(integer_to_list(N)) of
+                {ok, {RoundNbr, {_,_}}} ->
+                    io:format("found value~n"),
+                    wait_for_all_decisions(N-1, RoundNbr);
+                {ok, _} ->
+                    io:format("do sleep~n"),
+                    timer:sleep(500),
+                    wait_for_all_decisions(N, RoundNbr)
+            end
     end.
 
-beb_loop(ListOfStates, Pid) ->
+
+beb_loop(ListOfStates, Pid, RoundNbr) ->
     io:format("Current state of race:~n"),
     print_state(lists:nth(Pid, ListOfStates)),
-    % Display the list sorted by the position in descending order.
+    %% Display the list sorted by the position in descending order.
     display(lists:reverse(lists:sort(fun(State1, State2) -> State1#state.position =< State2#state.position end, ListOfStates))),
-    erlang:send_after(25000, self(), {ok, coucou}),
+    %erlang:send_after(?ROUNDLENGTH, self(), {ok, coucou}),
     NewDecision = user_input_decision(),
     io:format("Putting ~p at key: ~p~n", [NewDecision, Pid]),
-    kvstore:put(integer_to_list(Pid), NewDecision),
-    wait_for_all_decisions(),
+    kvstore:put(integer_to_list(Pid), {RoundNbr+1, NewDecision}),
+    wait_for_all_decisions(length(ListOfStates), RoundNbr+1),
     StatesWithDecision = update_states_decision(ListOfStates), % update the field decision in all states
     StatesUpdated = update_states(StatesWithDecision), % update the other fields of the states based on the decision
-    beb_loop(StatesUpdated, Pid).
+    beb_loop(StatesUpdated, Pid, RoundNbr+1).
 
 %% @doc From ListOfStates, gets the decision stored in the DHT and set it in
 %% the list, then returns the updated list of states.
@@ -135,7 +146,7 @@ update_states_decision(ListOfStates) ->
             Pid = H#state.pid,
             case kvstore:get(integer_to_list(Pid)) of
                 {ok, not_found} -> Decision={speed, 0};
-                {ok, Decision} -> ok
+                {ok, {_, Decision}} -> ok
             end,
             NewState = #state { pid= Pid,
                         roundnbr=H#state.roundnbr,
