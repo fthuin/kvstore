@@ -9,7 +9,8 @@
          put/2,
          incr/1,
          incrby/2,
-         start_race/2
+         start_race/2,
+         user_input_decision/1
         ]).
 
 -define(BUCKET, "default").
@@ -104,7 +105,6 @@ print_state(State) ->
     io:format("Distance to cover: ~p~n", [State#state.distancetocover]),
     io:format("Energy: ~p~n", [State#state.energy]),
     io:format("Speed: ~p~n", [State#state.speed]),
-    io:format("Round length: ~p~n", [State#state.roundlength]),
     io:format("----------------------------------------------------------~n").
 
 wait_for_all_decisions(N, RoundNbr) ->
@@ -113,6 +113,9 @@ wait_for_all_decisions(N, RoundNbr) ->
         _ ->
             case kvstore:get(integer_to_list(N)) of
                 {ok, {RoundNbr, {_,_}}} ->
+                    io:format("found value~n"),
+                    wait_for_all_decisions(N-1, RoundNbr);
+                {ok, {RoundNbr, {boost}}} ->
                     io:format("found value~n"),
                     wait_for_all_decisions(N-1, RoundNbr);
                 {ok, _} ->
@@ -129,13 +132,36 @@ beb_loop(ListOfStates, Pid, RoundNbr) ->
     %% Display the list sorted by the position in descending order.
     display(lists:reverse(lists:sort(fun(State1, State2) -> State1#state.position =< State2#state.position end, ListOfStates))),
     %erlang:send_after(?ROUNDLENGTH, self(), {ok, coucou}),
-    NewDecision = user_input_decision(),
-    io:format("Putting ~p at key: ~p~n", [NewDecision, Pid]),
+    InputPid = spawn(?MODULE, user_input_decision, [self()]),
+    {ok, TRef} = timer:kill_after(timer:seconds(10), InputPid),
+    NewDecision = round_timeout((lists:nth(Pid, ListOfStates))#state.decision, TRef),
+    io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, NewDecision, Pid]),
     kvstore:put(integer_to_list(Pid), {RoundNbr+1, NewDecision}),
     wait_for_all_decisions(length(ListOfStates), RoundNbr+1),
+    %if RoundNbr == 0 -> timer:apply_interval(10000, kvstore, round_timeout, [])
+    %end,
     StatesWithDecision = update_states_decision(ListOfStates), % update the field decision in all states
     StatesUpdated = update_states(StatesWithDecision), % update the other fields of the states based on the decision
     beb_loop(StatesUpdated, Pid, RoundNbr+1).
+
+round_timeout(OldDecision, TRef) ->
+    receive
+        {decision, Decision} ->
+            timer:cancel(TRef),
+            Decision
+    after
+        10000 ->
+            io:format("The round has timed out. Old decision: ~p~n", [OldDecision]),
+            case OldDecision of
+                {RoundNbr, {speed, Nbr}} when RoundNbr >= 0 ->
+                    Decision = {speed, Nbr};
+                {RoundNbr, {behind, Nbr}} when RoundNbr >= 0 ->
+                    Decision = {behind, Nbr};
+                {RoundNbr, {boost}} when RoundNbr >= 0 ->
+                    Decision = {boost}
+            end,
+            Decision
+    end.
 
 %% @doc From ListOfStates, gets the decision stored in the DHT and set it in
 %% the list, then returns the updated list of states.
@@ -145,8 +171,8 @@ update_states_decision(ListOfStates) ->
         [H | T] ->
             Pid = H#state.pid,
             case kvstore:get(integer_to_list(Pid)) of
-                {ok, not_found} -> Decision={speed, 0};
-                {ok, {_, Decision}} -> ok
+                {ok, not_found} -> Decision={0, {speed, 0}};
+                {ok, Decision} -> ok
             end,
             NewState = #state { pid= Pid,
                         roundnbr=H#state.roundnbr,
@@ -175,15 +201,15 @@ calculate_new_state(State, ListOfStates) ->
     OldEnergy = State#state.energy,
     OldSpeed = State#state.speed,
     case Decision of
-        {boost} ->
+        {_, {boost}} ->
             NewSpeed = OldSpeed,
             NewPosition = OldPosition + OldSpeed,
             NewEnergy = 0;
-        {speed, OldSpeedChoice} ->
+        {_, {speed, OldSpeedChoice}} ->
             NewSpeed = OldSpeedChoice,
             NewPosition = OldPosition + OldSpeedChoice,
             NewEnergy = OldEnergy - 0.12 * OldSpeedChoice * OldSpeedChoice;
-        {behind, OldPlayerChoice} ->
+        {_, {behind, OldPlayerChoice}} ->
             NewSpeed = (lists:nth(OldPlayerChoice, ListOfStates))#state.speed,
             % FIXME how to implement the position
             NewPosition = (lists:nth(OldPlayerChoice, ListOfStates))#state.position + (lists:nth(OldPlayerChoice, ListOfStates))#state.speed,
@@ -208,29 +234,29 @@ display(ListOfStates) ->
             display(T)
     end.
 
-user_input_decision() ->
+user_input_decision(PPid) ->
     case io:read("Please enter a strategy: [boost,speed,behind] ") of
         {ok, Input} ->
             case Input of
                 boost ->
-                    {boost};
+                    PPid ! {decision, {boost}};
                 speed ->
                     case io:read("Please enter a speed: ") of
                         {ok, Speed} ->
-                            {speed, Speed};
+                            PPid ! {decision, {speed, Speed}};
                         _ ->
-                            {speed, 0}
+                            PPid ! {decision, {speed, 0}}
                     end;
                 behind ->
                     case io:read("Please enter a player id: ") of
                         {ok, Player} ->
-                            {behind, Player};
+                            PPid ! {decision, {behind, Player}};
                         _ ->
-                            {speed, 0}
+                            PPid ! {decision, {speed, 0}}
                     end;
                 error ->
-                    {speed, 0}
+                    PPid ! {decision, {speed, 0}}
             end;
         _ ->
-            {speed, 0}
+            PPid ! {decision, {speed, 0}}
     end.
