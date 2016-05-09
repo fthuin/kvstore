@@ -16,6 +16,7 @@
 -define(BUCKET, "default").
 -define(TIMEOUT, 5000).
 -define(ROUNDLENGTH, 25000).
+-define(DISTANCETOCOVER, 100).
 
 -record(state, {pid, roundnbr, decision, nbrofplayers, position, distancetocover, energy, speed, roundlength}).
 
@@ -88,7 +89,7 @@ init_game_state(I, N, Acc) ->
                             decision={0, {speed, 0}},
                             nbrofplayers=N,
                             position=0,
-                            distancetocover=100,
+                            distancetocover=?DISTANCETOCOVER,
                             energy=112,
                             speed=0,
                             roundlength=?ROUNDLENGTH
@@ -113,13 +114,13 @@ wait_for_all_decisions(N, RoundNbr) ->
         _ ->
             case kvstore:get(integer_to_list(N)) of
                 {ok, {RoundNbr, {_,_}}} ->
-                    io:format("found value~n"),
+                    io:format("Decision of ~p received~n", [N]),
                     wait_for_all_decisions(N-1, RoundNbr);
                 {ok, {RoundNbr, {boost}}} ->
-                    io:format("found value~n"),
+                    io:format("Decision of ~p received~n", [N]),
                     wait_for_all_decisions(N-1, RoundNbr);
                 {ok, _} ->
-                    io:format("do sleep~n"),
+                    %io:format("do sleep~n"),
                     timer:sleep(500),
                     wait_for_all_decisions(N, RoundNbr)
             end
@@ -142,7 +143,26 @@ beb_loop(ListOfStates, Pid, RoundNbr) ->
     %end,
     StatesWithDecision = update_states_decision(ListOfStates), % update the field decision in all states
     StatesUpdated = update_states(StatesWithDecision), % update the other fields of the states based on the decision
-    beb_loop(StatesUpdated, Pid, RoundNbr+1).
+    MyNewState = lists:nth(Pid, StatesUpdated),
+    case MyNewState of
+        _ when MyNewState#state.position >= 100 ->
+            io:format("You finished the race!~n"),
+            dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1);
+        _ when MyNewState#state.energy =< 0 ->
+            io:format("You are out of energy!~n"),
+            dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1);
+        _ ->
+            beb_loop(StatesUpdated, Pid, RoundNbr+1)
+    end.
+
+dummy_beb_loop(ListOfStates, Pid, RoundNbr) ->
+    io:format("You can't play anymore. You can see the course:~n"),
+    display(lists:reverse(lists:sort(fun(State1, State2) -> State1#state.position =< State2#state.position end, ListOfStates))),
+    kvstore:put(integer_to_list(Pid), {RoundNbr+1, {speed, 0}}),
+    wait_for_all_decisions(length(ListOfStates), RoundNbr+1),
+    StatesWithDecision = update_states_decision(ListOfStates), % update the field decision in all states
+    StatesUpdated = update_states(StatesWithDecision), % update the other fields of the states based on the decision
+    dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1).
 
 round_timeout(OldDecision, TRef) ->
     receive
