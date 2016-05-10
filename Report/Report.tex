@@ -1,16 +1,76 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
+\usepackage{url}
 %\usepackage[left=1.5cm,right=1.5cm,top=2cm,bottom=2cm]{geometry}
 \title{LSINF2345 - Course project \\ A Simulated Bike Race}
 \author{Alexandre Hauet \& Florian Thuin}
 \date{\today} 
 
+\def\blurb{\textsc{Université catholique de Louvain\\
+  École polytechnique de Louvain\\
+  Pôle d'ingénierie informatique}}
+\def\clap#1{\hbox to 0pt{\hss #1\hss}}%
+\def\ligne#1{%
+  \hbox to \hsize{%
+    \vbox{\centering #1}}}%
+\def\haut#1#2#3{%
+  \hbox to \hsize{%
+    \rlap{\vtop{\raggedright #1}}%
+    \hss
+    \clap{\vbox{\vfill\centering #2\vfill}}%
+    \hss
+    \llap{\vtop{\raggedleft #3}}}}%
+
+
 \begin{document}
 
-\maketitle
+\begin{titlepage}
+\thispagestyle{empty}\vbox to 1\vsize{%
+  \vss
+  \vbox to 1\vsize{%
+    \haut{\raisebox{-5mm}{\includegraphics[width=2.5cm]{logo_ucl.pdf}}}{\blurb}{\raisebox{-5mm}{\includegraphics[scale=0.20]{ingi_logo.png}}}
+    \vfill
+    \ligne{\Huge \textbf{\textsc{LSINF2345}}}
+     \vspace{5mm}
+    \ligne{\huge \textbf{\textsc{Course project }}}
+     \vspace{15mm}
+    \ligne{\Large \textbf{\textsc{A Simulated Bike Race}}}
+    \vspace{5mm}
+    \ligne{\large{\textsc{\today}}}
+    \vfill
+    \vspace{5mm}
+    \ligne{%
+         \textsc{Group 10\\Alexandre Hauet\\Florian Thuin} 
+      }
+      \vspace{5mm}
+    }%
+  \vss
+  }
+\end{titlepage}
+
+
+
+
+
+
+\section*{Introduction}
+For this assignment, we must resolve three problems linked to a game \textbf{Bike Race}.  To solve this problem, 
+we realize a distributed system in Erlang. Specifically, we use the Riak : a distributed NoSQL key-value data store
+ that offers high availability, fault tolerance, operational simplicity, and scalability\footnote{\url{https://en.wikipedia.org/wiki/Riak}}.
+ Riak make our life easier, because it manages the send of messages for us.
+
 
 \section*{Problem 0}
+For this first problem of the assignment, we need to start by setting the track, where no biker fails and no special
+consideration has been given to broadcasting messages. We use the best-effort broadcast (beb) to implement 
+this problem.
+
+
+At the begin of the game, each biker will have an id.  To implement the best-effort broadcast, we take advantage of
+Riak. So each nodes during a round will store its decision in the store. Others will reach the decision using the id of 
+the biker.
+
 
 \section*{Problem 1}
 
@@ -21,7 +81,7 @@ failure detector. To build it, we use a simple heartbeat algorithm.
 
 A heartbeat is a mechanism can detect a crash node within a bounded time. The algorithm exchanges 
 messages all processes and uses a specific timeout mechanism initialized with a delay. During this period,
-all processes have the time to send messages (request messages and reply messages). After they are considered as crashed. But we must be careful that
-all processes have enough time to send the messages. 
+all processes have the time to send messages (request messages and reply messages). After they are considered 
+as crashed. But we must be careful that all processes have enough time to send the messages. 
 
 \end{document}
