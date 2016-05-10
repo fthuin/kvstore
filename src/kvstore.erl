@@ -15,7 +15,7 @@
 
 -define(BUCKET, "default").
 -define(TIMEOUT, 5000).
--define(ROUNDLENGTH, 25000).
+-define(ROUNDLENGTH, 10000).
 -define(DISTANCETOCOVER, 100).
 
 -record(state, {pid, roundnbr, decision, nbrofplayers, position, distancetocover, energy, speed, roundlength}).
@@ -151,18 +151,38 @@ beb_loop(ListOfStates, Pid, RoundNbr) ->
         _ when MyNewState#state.energy =< 0 ->
             io:format("You [~p] are out of energy!~n", [pid]),
             dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1);
-        _ ->
+        _ when MyNewState#state.position < 100 andalso MyNewState#state.energy > 0 ->
             beb_loop(StatesUpdated, Pid, RoundNbr+1)
     end.
 
 dummy_beb_loop(ListOfStates, Pid, RoundNbr) ->
-    io:format("You can't play anymore. You can see the course:~n"),
+    io:format("You can't play anymore. You can see the race:~n"),
     display(lists:reverse(lists:sort(fun(State1, State2) -> State1#state.position =< State2#state.position end, ListOfStates))),
-    kvstore:put(integer_to_list(Pid), {RoundNbr+1, {speed, 0}}),
-    wait_for_all_decisions(length(ListOfStates), RoundNbr+1),
-    StatesWithDecision = update_states_decision(ListOfStates), % update the field decision in all states
-    StatesUpdated = update_states(StatesWithDecision), % update the other fields of the states based on the decision
-    dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1).
+    case check_finished(ListOfStates) of
+        true ->
+            race_finished;
+        false ->
+            timer:sleep(?ROUNDLENGTH),
+            io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, {speed, 0}, Pid]),
+            kvstore:put(integer_to_list(Pid), {RoundNbr+1, {speed, 0}}),
+            wait_for_all_decisions(length(ListOfStates), RoundNbr+1),
+            StatesWithDecision = update_states_decision(ListOfStates), % update the field decision in all states
+            StatesUpdated = update_states(StatesWithDecision), % update the other fields of the states based on the decision
+            dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1)
+    end.
+
+check_finished(ListOfStates) ->
+    case ListOfStates of
+        [] ->
+            true;
+        [H | T] ->
+            Position = H#state.position,
+            Energy = H#state.energy,
+            if
+                Position >= 100 orelse Energy =< 0 -> check_finished(T);
+                Position < 100 andalso Energy > 0 -> false
+            end
+    end.
 
 round_timeout(OldDecision, TRef) ->
     receive
@@ -170,7 +190,7 @@ round_timeout(OldDecision, TRef) ->
             timer:cancel(TRef),
             Decision
     after
-        10000 ->
+        ?ROUNDLENGTH ->
             io:format("The round has timed out. Old decision: ~p~n", [OldDecision]),
             case OldDecision of
                 {RoundNbr, {speed, Nbr}} when RoundNbr >= 0 ->
@@ -223,16 +243,32 @@ calculate_new_state(State, ListOfStates) ->
     case Decision of
         {_, {boost}} ->
             NewSpeed = OldSpeed,
-            NewPosition = OldPosition + OldSpeed,
+            if
+                OldPosition + OldSpeed >= 100 ->
+                    NewPosition = 100;
+                OldPosition + OldSpeed < 100 ->
+                    NewPosition = OldPosition + OldSpeed
+            end,
             NewEnergy = 0;
         {_, {speed, OldSpeedChoice}} ->
             NewSpeed = OldSpeedChoice,
-            NewPosition = OldPosition + OldSpeedChoice,
+            if
+                 OldPosition + OldSpeedChoice >= 100 ->
+                    NewPosition = 100;
+                 OldPosition + OldSpeedChoice < 100 ->
+                    NewPosition =  OldPosition + OldSpeedChoice
+            end,
             NewEnergy = OldEnergy - 0.12 * OldSpeedChoice * OldSpeedChoice;
         {_, {behind, OldPlayerChoice}} ->
             NewSpeed = (lists:nth(OldPlayerChoice, ListOfStates))#state.speed,
             % FIXME how to implement the position
-            NewPosition = (lists:nth(OldPlayerChoice, ListOfStates))#state.position + (lists:nth(OldPlayerChoice, ListOfStates))#state.speed,
+            OtherPosition = (lists:nth(OldPlayerChoice, ListOfStates))#state.position + (lists:nth(OldPlayerChoice, ListOfStates))#state.speed,
+            if
+                 OtherPosition >= 100 ->
+                    NewPosition = 100;
+                 OtherPosition < 100 ->
+                    NewPosition =  OtherPosition
+            end,
             NewEnergy = OldEnergy - 0.06 * (lists:nth(OldPlayerChoice, ListOfStates))#state.speed * (lists:nth(OldPlayerChoice, ListOfStates))#state.speed
     end,
     #state { pid=State#state.pid,
