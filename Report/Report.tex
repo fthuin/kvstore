@@ -1,0 +1,27 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+%\usepackage[left=1.5cm,right=1.5cm,top=2cm,bottom=2cm]{geometry}
+\title{LSINF2345 - Course project \\ A Simulated Bike Race}
+\author{Alexandre Hauet \& Florian Thuin}
+\date{\today} 
+
+\begin{document}
+
+\maketitle
+
+\section*{Problem 0}
+
+\section*{Problem 1}
+
+\section*{Problem 2}
+For this problem, we must handle the failure cause by the fact that a biker may fall down during the race.
+To solve this problem, we need to modify our solution of problem 1. Our design requires the use of a 
+failure detector. To build it, we use a simple heartbeat algorithm.
+
+A heartbeat is a mechanism can detect a crash node within a bounded time. The algorithm exchanges 
+messages all processes and uses a specific timeout mechanism initialized with a delay. During this period,
+all processes have the time to send messages (request messages and reply messages). After they are considered as crashed. But we must be careful that
+all processes have enough time to send the messages. 
+
+\end{document}
