@@ -149,7 +149,7 @@ beb_loop(ListOfStates, Pid, RoundNbr) ->
             io:format("You finished the race!~n"),
             dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1);
         _ when MyNewState#state.energy =< 0 ->
-            io:format("You [~p] are out of energy!~n", [pid]),
+            io:format("You are out of energy!~n"),
             dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1);
         _ when MyNewState#state.position < 100 andalso MyNewState#state.energy > 0 ->
             beb_loop(StatesUpdated, Pid, RoundNbr+1)
