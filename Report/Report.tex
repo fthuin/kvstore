@@ -64,12 +64,15 @@ we realize a distributed system in Erlang. Specifically, we use Riak : a distrib
 \section*{Problem 0}
 For this first problem of the assignment, we need to start by setting the track, where no biker fails and no special
 consideration has been given to broadcasting messages. We use the best-effort broadcast (beb) to implement 
-this problem.
+this problem.\newline
 
 
 At the begin of the game, each biker will have an id.  To implement the best-effort broadcast, we take advantage of
-Riak. So each nodes during a round will store its decision in the store. Others will reach the decision using the id of 
-the biker.
+Riak. So each nodes during a round will store its decision in the key store. Others will reach the decision using the id of 
+the biker.\newline
+
+We can see that the properties of best-effort broadcast aren't violate. The message are not duplicated, they are written
+only once times in the key store by the bikers.
 
 
 \section*{Problem 1}
@@ -77,7 +80,7 @@ the biker.
 \section*{Problem 2}
 For this problem, we must handle the failure cause by the fact that a biker may fall down during the race.
 To solve this problem, we need to modify our solution of problem 1. Our design requires the use of a 
-failure detector. To build it, we use a simple heartbeat algorithm.
+failure detector. To build it, we use a simple heartbeat algorithm.\newline
 
 A heartbeat is a mechanism can detect a crash node within a bounded time. The algorithm exchanges 
 messages all processes and uses a specific timeout mechanism initialized with a delay. During this period,
