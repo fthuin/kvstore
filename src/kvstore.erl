@@ -149,7 +149,7 @@ beb_loop(ListOfStates, Pid, RoundNbr) ->
             io:format("You finished the race!~n"),
             dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1);
         _ when MyNewState#state.energy =< 0 ->
-            io:format("You are out of energy!~n"),
+            io:format("You [~p] are out of energy!~n", [pid]),
             dummy_beb_loop(StatesUpdated, Pid, RoundNbr+1);
         _ ->
             beb_loop(StatesUpdated, Pid, RoundNbr+1)
@@ -249,10 +249,19 @@ calculate_new_state(State, ListOfStates) ->
 display(ListOfStates) ->
     case ListOfStates of
         [] -> ok;
-        [H | T] ->
-            io:format("~p at position ~p~n", [H#state.pid, H#state.position]),
+        [H|T] ->
+            case H#state.decision of
+                {_, {behind, X}} ->
+                    io:format("{~p,~p} at position ~p~n", [H#state.pid, X,  H#state.position]);
+                {_, {speed, _}} ->
+                     io:format("~p at position ~p~n", [H#state.pid, H#state.position]);
+                {_, {boost}} ->
+                    io:format("~p at position ~p~n", [H#state.pid, H#state.position])
+            end,
             display(T)
-    end.
+        end.
+
+
 
 user_input_decision(PPid) ->
     case io:read("Please enter a strategy: [boost,speed,behind] ") of
