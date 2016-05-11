@@ -53,7 +53,7 @@ init([ReqId, From, Client, KeyName]) ->
 	{ok, prepare, SD, 0}.
 
 prepare(timeout, SDInit=#state{client=Client, key_name=KeyName}) ->
-	DocIdx = riak_core_util:chash_key({list_to_binary(Client), 
+	DocIdx = riak_core_util:chash_key({list_to_binary(Client),
 									   list_to_binary(KeyName)}),
 	PrefList = riak_core_apl:get_apl(DocIdx, ?N, kvstore_dht),
 	SD = SDInit#state{preflist=PrefList},
@@ -67,16 +67,16 @@ execute(timeout, SDInit=#state{req_id=ReqId,
 	{next_state, waiting, SDInit}.
 
 %% @doc Wait for R replies and then respond to From (original client
-%% that called `kvstore:get/2').
-waiting({ok, ReqId, Val}, SDInit=#state{from=From, 
-										num_r=NumRInit, 
+%% that called `biker:get/2').
+waiting({ok, ReqId, Val}, SDInit=#state{from=From,
+										num_r=NumRInit,
 										replies=RepliesInit}) ->
 	NumR=NumRInit+1,
 	Replies=[Val|RepliesInit],
 	SD=SDInit#state{num_r=NumR, replies=Replies},
 	if
 		NumR=:=?R ->
-			Reply = 
+			Reply =
 				case lists:any(different(Val),Replies) of
 					true ->
 						Replies;
@@ -101,7 +101,7 @@ code_change(_OldVsn, StateName, State, _Extra) -> {ok, StateName, State}.
 
 terminate(_Reason, _SN, _SD) ->
 	ok.
-				
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
