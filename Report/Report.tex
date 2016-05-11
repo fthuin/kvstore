@@ -84,10 +84,18 @@ an other Biker ($b_{j}$) may access to the message ,and thus the message is deli
 accessible by all the bikers.
 \end{itemize}
 
-So we can conclude, that our algorithm is definitely a best-effort broadcast algorithm. 
+So we can conclude, that our algorithm is definitely a best-effort broadcast algorithm.\newline
 
+But we can observe strange behavior. Each node has its own way to manage the conflict between behind instruction. If we have a cycle (for example
+the biker A follows the biker B, the biker B follows the biker C and the biker C follows the biker A), the resolution of the race could be different.
 
 \section*{Problem 1}
+For this problem, we need to guarantee the same view for all bikers. To solve this problem, we need to implement a total-order broadcast.
+One of the major difference between total order broadcast and best-effort broadcast is that the processes must deliver all messages according to
+the same order.
+
+
+
 
 \section*{Problem 2}
 For this problem, we must handle the failure cause by the fact that a biker may fall down during the race.
@@ -98,5 +106,11 @@ A heartbeat is a mechanism can detect a crash node within a bounded time. The al
 messages all processes and uses a specific timeout mechanism initialized with a delay. During this period,
 all processes have the time to send messages (request messages and reply messages). After they are considered 
 as crashed. But we must be careful that all processes have enough time to send the messages. 
+
+
+\section*{Conclusion}
+This project was very difficult to start. We were troubled to can not use send messages to implement a broadcast algorithm.
+But after a while, we understood that there exist different way to implement a broadcast algorithm. So we discovered the power
+of Riak.
 
 \end{document}
