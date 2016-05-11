@@ -59,7 +59,8 @@ start_race(Pid, N) ->
     Var = init_game_state(N,N,[]),
     ok = biker:put(integer_to_list(Pid), {0, {speed, 0}}),
     io:format("~p~n", [Var]),
-    beb:beb_loop(Var, Pid, 0),
+    %beb:beb_loop(Var, Pid, 0),
+    tob:tob_loop(Var, Pid, 0),
     {ok, start_race}.
 
 %%%===================================================================
