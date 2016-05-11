@@ -228,6 +228,16 @@ update_states_decision(ListOfStates) ->
             lists:flatten([NewState | lists:flatten(update_states_decision(T))])
     end.
 
+contains_cycle(ListOfStates, ListOfBehind) ->
+    case ListOfStates of
+        [] -> false;
+        [H | T] ->
+            case H#state.decision of
+                {_, {behind, PlayerNbr}} ->
+                    contains_cycle(T, {H#state.pid, PlayerNbr})
+            end
+    end.
+
 update_states(ListOfStates) ->
     case ListOfStates of
         [] -> [];
@@ -297,7 +307,7 @@ display(ListOfStates) ->
                     io:format("~p at position ~p~n", [H#state.pid, H#state.position])
             end,
             display(T)
-        end.
+    end.
 
 
 
