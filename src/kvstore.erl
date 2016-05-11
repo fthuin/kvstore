@@ -125,7 +125,7 @@ wait_for_all_decisions(I, N, Acc, RoundNbr) ->
             end
     end.
 
-create_behind_list_from_id(ListOfStates, Pid, N) ->
+create_behind_list_from_id(ListOfStates, Pid) ->
     StatesNotMe = lists:filter(fun(State) -> State#state.pid =/= Pid end,ListOfStates),
     StatesMeFirst = lists:flatten([lists:nth(Pid, ListOfStates) | StatesNotMe]),
     create_behind_list(StatesMeFirst).
@@ -138,7 +138,7 @@ create_behind_list(ListOfStates, ListOfBehind) ->
         [] -> ListOfBehind;
         [H | T] ->
             case H#state.decision of
-                {behind, PlayerNbr} ->
+                {_, {behind, PlayerNbr}} ->
                     NewListOfBehind = lists:flatten([ListOfBehind | [ {H#state.pid, PlayerNbr}] ]),
                     create_behind_list(T, NewListOfBehind);
                 _ ->
@@ -150,6 +150,7 @@ contains_cycle(ListOfBehind) ->
     contains_cycle(ListOfBehind, ListOfBehind).
 
 contains_cycle(List, ListOfBehind) ->
+    io:format("contains_cycle? ~p~n", [ListOfBehind]),
     case List of
         [] -> false;
         [H | T] ->
@@ -165,6 +166,7 @@ contains_cycle(List, ListOfBehind) ->
 check_cycle(Pid, Pid2, OldPid, ListOfTuples) ->
     case ListOfTuples of
         [] ->
+            io:format("check_cycle finished ~p ~p ~p ~p", [Pid, Pid2, OldPid, ListOfTuples]),
             if
                 Pid == Pid2 -> {OldPid, true};
                 Pid =/= Pid2 -> false
@@ -191,7 +193,29 @@ beb_loop(ListOfStates, Pid, RoundNbr) ->
     kvstore:put(integer_to_list(Pid), {RoundNbr+1, NewDecision}),
     wait_for_all_decisions(Pid, length(ListOfStates), 0, RoundNbr+1),
     StatesWithDecision = update_states_decision(ListOfStates), % update the field decision in all states
-    StatesUpdated = update_states(StatesWithDecision), % update the other fields of the states based on the decision
+    case contains_cycle(create_behind_list_from_id(StatesWithDecision, Pid)) of
+        false -> StatesUpdated = update_states(StatesWithDecision); % update the other fields of the states based on the decision;
+        {OldPid, true} -> io:format("Conflict in behind...~n"),
+                StatesUpdated=update_states(
+                    lists:map(  fun(X) ->
+                            if
+                                OldPid == X#state.pid ->
+                                    #state { pid=X#state.pid,
+                                                roundnbr=X#state.roundnbr,
+                                                decision={X#state.roundnbr+1, {speed, X#state.speed}},
+                                                nbrofplayers=X#state.nbrofplayers,
+                                                position=X#state.position,
+                                                distancetocover=X#state.distancetocover,
+                                                energy=X#state.energy,
+                                                speed=X#state.speed,
+                                                roundlength=X#state.roundlength
+                                            };
+                                OldPid =/= X#state.pid ->
+                                    X
+                            end
+                        end,
+                        StatesWithDecision))
+    end,
     MyNewState = lists:nth(Pid, StatesUpdated),
     case MyNewState of
         _ when MyNewState#state.position >= ?DISTANCETOCOVER ->
@@ -280,21 +304,14 @@ update_states_decision(ListOfStates) ->
             lists:flatten([NewState | lists:flatten(update_states_decision(T))])
     end.
 
-contains_cycle(ListOfStates, ListOfBehind) ->
-    case ListOfStates of
-        [] -> false;
-        [H | T] ->
-            case H#state.decision of
-                {_, {behind, PlayerNbr}} ->
-                    contains_cycle(T, {H#state.pid, PlayerNbr})
-            end
-    end.
-
 update_states(ListOfStates) ->
-    case ListOfStates of
+    update_states(ListOfStates, ListOfStates).
+
+update_states(List, ListOfStates) ->
+    case List of
         [] -> [];
         [H | T] ->
-            lists:flatten([calculate_new_state(H, ListOfStates) | lists:flatten(update_states(T))])
+            lists:flatten([calculate_new_state(H, ListOfStates) | lists:flatten(update_states(T, ListOfStates))])
     end.
 
 calculate_new_state(State, ListOfStates) ->
