@@ -126,6 +126,58 @@ wait_for_all_decisions(N, RoundNbr) ->
             end
     end.
 
+create_behind_list_from_id(ListOfStates, Pid, N) ->
+    StatesNotMe = lists:filter(fun(State) -> State#state.pid =/= Pid end,ListOfStates),
+    StatesMeFirst = lists:flatten([lists:nth(Pid, ListOfStates) | StatesNotMe]),
+    create_behind_list(StatesMeFirst).
+
+create_behind_list(ListOfStates) ->
+    create_behind_list(ListOfStates, []).
+
+create_behind_list(ListOfStates, ListOfBehind) ->
+    case ListOfStates of
+        [] -> ListOfBehind;
+        [H | T] ->
+            case H#state.decision of
+                {behind, PlayerNbr} ->
+                    NewListOfBehind = lists:flatten([ListOfBehind | [ {H#state.pid, PlayerNbr}] ]),
+                    create_behind_list(T, NewListOfBehind);
+                _ ->
+                    create_behind_list(T, ListOfBehind)
+            end
+    end.
+
+contains_cycle(ListOfBehind) ->
+    contains_cycle(ListOfBehind, ListOfBehind).
+
+contains_cycle(List, ListOfBehind) ->
+    case List of
+        [] -> false;
+        [H | T] ->
+            case H of
+                {Pid, Pid2} ->
+                    case check_cycle(Pid, Pid2, Pid2, ListOfBehind) of
+                        {OldPid, true} -> {OldPid, true};
+                        false -> contains_cycle(T, ListOfBehind)
+                    end
+            end
+    end.
+
+check_cycle(Pid, Pid2, OldPid, ListOfTuples) ->
+    case ListOfTuples of
+        [] ->
+            if
+                Pid == Pid2 -> {OldPid, true};
+                Pid =/= Pid2 -> false
+            end;
+        [H | T] ->
+            case H of
+                {Pid2, Nbr} ->
+                    check_cycle(Pid, Nbr, Pid2, T);
+                _ ->
+                    check_cycle(Pid, Pid2, Pid2, T)
+            end
+    end.
 
 beb_loop(ListOfStates, Pid, RoundNbr) ->
     io:format("Current state of race:~n"),
