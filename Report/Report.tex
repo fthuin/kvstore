@@ -50,10 +50,6 @@
 \end{titlepage}
 
 
-
-
-
-
 \section*{Introduction}
 For this assignment, we must resolve three problems linked to a game \textbf{Bike Race}.  To solve this problem, 
 we realize a distributed system in Erlang. Specifically, we use Riak : a distributed NoSQL key-value data store
@@ -71,8 +67,24 @@ At the begin of the game, each biker will have an id.  To implement the best-eff
 Riak. So each nodes during a round will store its decision in the key store. Others will reach the decision using the id of 
 the biker.\newline
 
-We can see that the properties of best-effort broadcast aren't violate. The message are not duplicated, they are written
-only once times in the key store by the bikers.
+
+According to the course the best-effort broadcast properties are :
+\begin{itemize}
+\item \textbf{Best-effort-Validity} : If $p_{i}$ and  $p_{j}$ are correct, then any broadcast by  $p_{i}$ is eventually delivered by  $p_{j}$
+\item \textbf{No duplication} : No message delivered more then once
+\item \textbf{No creation} : No message delivered unless broadcast
+\end{itemize}
+
+Let's see if our algorithm fulfill the properties :
+\begin{itemize}
+\item We use a key store to exchange the informations between the bikers. So when a Biker ($b_{i}$) broadcast a message via the key store,
+an other Biker ($b_{j}$) may access to the message ,and thus the message is delivered
+\item The message are not duplicated, they are written only once times in the key store by the bikers.
+\item When a biker send a message, it's always a broadcast because the biker use the key store to send the message. And the key store is
+accessible by all the bikers.
+\end{itemize}
+
+So we can conclude, that our algorithm is definitely a best-effort broadcast algorithm. 
 
 
 \section*{Problem 1}
