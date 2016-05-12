@@ -13,3 +13,6 @@ rel/example_project
 *.aux
 *.pdf
 *.log
+*.fdb_latexmk
+*.fls
+*.out

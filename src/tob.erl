@@ -5,7 +5,7 @@
         tob_loop/3
     ]).
 
-
+%% @doc main loop to perform a total order broadcast for the biker race.
 tob_loop(ListOfStates, Pid, RoundNbr) ->
     io:format("Current state of race:~n"),
     biker:print_state(lists:nth(Pid, ListOfStates)),
@@ -54,7 +54,7 @@ tob_loop(ListOfStates, Pid, RoundNbr) ->
             tob_loop(StatesUpdated, Pid, RoundNbr+1)
     end.
 
-
+%% @doc waits that all decisions are put in the kvstore
 wait_for_all_decisions(N, RoundNbr) ->
     case N of
         0 -> ok;
@@ -124,6 +124,8 @@ check_cycle(Pid, Pid2, OldPid, ListOfTuples) ->
             end
     end.
 
+%% @doc total order broadcast loop that doesn't ask for an user input (used
+%% when the node has finished the race)
 dummy_tob_loop(ListOfStates, Pid, RoundNbr) ->
     io:format("You can't play anymore. You can see the race:~n"),
     biker:display(lists:reverse(lists:sort(fun(State1, State2) -> State1#state.position =< State2#state.position end, ListOfStates))),

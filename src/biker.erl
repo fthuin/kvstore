@@ -53,14 +53,16 @@ incr(KeyName) ->
 incrby(KeyName, Val) ->
     do_write(KeyName, incrby, Val).
 
+%% @doc Main function of the project, use it in the console of each node
+%% to launch a race with a unique Pid and the number of players N.
 start_race(Pid, N) ->
     %% @doc: Pid is the given PID for this node and N is the total number of nodes
     io:format("PID:N --- ~p:~p ~n", [Pid, N]),
     Var = init_game_state(N,N,[]),
     ok = biker:put(integer_to_list(Pid), {0, {speed, 0}}),
     io:format("~p~n", [Var]),
-    %beb:beb_loop(Var, Pid, 0),
-    tob:tob_loop(Var, Pid, 0),
+    %beb:beb_loop(Var, Pid, 0), % launche the race with best effort broadcast
+    tob:tob_loop(Var, Pid, 0), % Launch the race with total order broadcast
     {ok, start_race}.
 
 %%%===================================================================
@@ -83,6 +85,8 @@ do_write(KeyName, Op, Val) ->
 	{ok, ReqID} = kvstore_modify_fsm:modify(?BUCKET, KeyName, Op, Val),
 	wait_for_reqid(ReqID, ?TIMEOUT).
 
+%% @doc Initialize the state of the race as a single node will view it,
+%% by setting default (initial) values for each node state.
 init_game_state(I, N, Acc) ->
     case I of
         0 -> Acc;
@@ -99,7 +103,7 @@ init_game_state(I, N, Acc) ->
             init_game_state(I-1, N, [Var | Acc])
     end.
 
-
+%% @doc Print information in the console about the state given as parameter.
 print_state(State) ->
     io:format("----------- State of node ~p during round ~p -----------~n", [State#state.pid, State#state.roundnbr]),
     io:format("Decision: ~p~n", [State#state.decision]),
@@ -110,8 +114,9 @@ print_state(State) ->
     io:format("Speed: ~p~n", [State#state.speed]),
     io:format("----------------------------------------------------------~n").
 
-
-
+%% @doc Following the defined round length, if no user input is received, returns
+%% the old decision as the decision for this round. If a user input is received,
+%% returns the decision of the user.
 round_timeout(OldDecision, TRef) ->
     receive
         {decision, Decision} ->
@@ -159,6 +164,8 @@ update_states_decision(ListOfStates) ->
             lists:flatten([NewState | lists:flatten(update_states_decision(T))])
     end.
 
+%% @doc returns a list of all the states of the race such as the values are
+%% updated following decisions made during the round.
 update_states(ListOfStates) ->
     update_states(ListOfStates, ListOfStates).
 
@@ -218,6 +225,7 @@ calculate_new_state(State, ListOfStates) ->
                 roundlength=State#state.roundlength
             }.
 
+%% @doc displays the position of each player with their pid.
 display(ListOfStates) ->
     case ListOfStates of
         [] -> ok;
@@ -233,8 +241,8 @@ display(ListOfStates) ->
             display(T)
     end.
 
-
-
+%% @doc ask for user input and sends it. In case of bad input, sends the
+%% decision to go at speed 0.
 user_input_decision(PPid) ->
     case io:read("Please enter a strategy: [boost,speed,behind] ") of
         {ok, Input} ->
