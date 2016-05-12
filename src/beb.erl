@@ -15,7 +15,7 @@ beb_loop(ListOfStates, Pid, RoundNbr) ->
     InputPid = spawn(biker, user_input_decision, [self()]),
     {ok, TRef} = timer:kill_after(timer:seconds(10), InputPid),
     NewDecision = biker:round_timeout((lists:nth(Pid, ListOfStates))#state.decision, TRef),
-    io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, NewDecision, Pid]),
+    %io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, NewDecision, Pid]),
     biker:put(integer_to_list(Pid), {RoundNbr+1, NewDecision}),
     wait_for_all_decisions(Pid, length(ListOfStates), 0, RoundNbr+1),
     StatesWithDecision = biker:update_states_decision(ListOfStates), % update the field decision in all states
@@ -62,10 +62,10 @@ wait_for_all_decisions(I, N, Acc, RoundNbr) ->
         _ ->
             case biker:get(integer_to_list(I)) of
                 {ok, {RoundNbr, {_,_}}} ->
-                    io:format("Decision of ~p received~n", [I]),
+                    %io:format("Decision of ~p received~n", [I]),
                     wait_for_all_decisions((I rem N)+1, N, Acc+1, RoundNbr);
                 {ok, {RoundNbr, {boost}}} ->
-                    io:format("Decision of ~p received~n", [I]),
+                    %io:format("Decision of ~p received~n", [I]),
                     wait_for_all_decisions((I rem N)+1, N, Acc+1, RoundNbr);
                 {ok, _} ->
                     timer:sleep(500),
@@ -100,7 +100,7 @@ contains_cycle(ListOfBehind) ->
     contains_cycle(ListOfBehind, ListOfBehind).
 
 contains_cycle(List, ListOfBehind) ->
-    io:format("contains_cycle? ~p~n", [ListOfBehind]),
+    %io:format("contains_cycle? ~p~n", [ListOfBehind]),
     case List of
         [] -> false;
         [H | T] ->
@@ -116,7 +116,7 @@ contains_cycle(List, ListOfBehind) ->
 check_cycle(Pid, Pid2, OldPid, ListOfTuples) ->
     case ListOfTuples of
         [] ->
-            io:format("check_cycle finished ~p ~p ~p ~p", [Pid, Pid2, OldPid, ListOfTuples]),
+            %io:format("check_cycle finished ~p ~p ~p ~p", [Pid, Pid2, OldPid, ListOfTuples]),
             if
                 Pid == Pid2 -> {OldPid, true};
                 Pid =/= Pid2 -> false
@@ -140,7 +140,7 @@ dummy_beb_loop(ListOfStates, Pid, RoundNbr) ->
             race_finished;
         false ->
             timer:sleep(?ROUNDLENGTH),
-            io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, {speed, 0}, Pid]),
+            %io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, {speed, 0}, Pid]),
             biker:put(integer_to_list(Pid), {RoundNbr+1, {speed, 0}}),
             wait_for_all_decisions(Pid, length(ListOfStates), 0, RoundNbr+1),
             StatesWithDecision = biker:update_states_decision(ListOfStates), % update the field decision in all states
