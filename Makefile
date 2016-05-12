@@ -25,7 +25,7 @@ rel: all
 relclean:
 	rm -rf rel/kvstore
 
-devrel: dev1 dev2 dev3
+devrel: dev1 dev2 dev3 dev4 dev5
 
 ###
 ### Docs
@@ -41,17 +41,17 @@ stage : rel
 	$(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf rel/kvstore/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) rel/kvstore/lib;)
 
 
-stagedevrel: dev1 dev2 dev3
+stagedevrel: dev1 dev2 dev3 dev4 dev5
 	$(foreach dev,$^,\
 	  $(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf dev/$(dev)/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) dev/$(dev)/lib;))
 
-devrel: dev1 dev2 dev3
+devrel: dev1 dev2 dev3 dev4 dev5
 
 
 devclean:
 	rm -rf dev
 
-dev1 dev2 dev3: all
+dev1 dev2 dev3 dev4 dev5: all
 	mkdir -p dev
 	(cd rel && $(REBAR) generate target_dir=../dev/$@ overlay_vars=vars/$@.config)
 

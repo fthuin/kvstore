@@ -11,9 +11,9 @@ tob_loop(ListOfStates, Pid, RoundNbr) ->
     biker:print_state(lists:nth(Pid, ListOfStates)),
     % Display the list sorted by the position in descending order.
     biker:display(lists:reverse(lists:sort(fun(State1, State2) -> State1#state.position =< State2#state.position end, ListOfStates))),
-    %erlang:send_after(?ROUNDLENGTH, self(), {ok, coucou}),
+    %erlang:send_after(?ROUNDLENGTH*1000, self(), {ok, coucou}),
     InputPid = spawn(biker, user_input_decision, [self()]),
-    {ok, TRef} = timer:kill_after(timer:seconds(10), InputPid),
+    {ok, TRef} = timer:kill_after(timer:seconds(?ROUNDLENGTH), InputPid),
     NewDecision = biker:round_timeout((lists:nth(Pid, ListOfStates))#state.decision, TRef),
     %io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, NewDecision, Pid]),
     biker:put(integer_to_list(Pid), {RoundNbr+1, NewDecision}),
@@ -21,7 +21,7 @@ tob_loop(ListOfStates, Pid, RoundNbr) ->
     StatesWithDecision = biker:update_states_decision(ListOfStates), % update the field decision in all states
     case contains_cycle(create_behind_list(StatesWithDecision)) of
         false -> StatesUpdated = biker:update_states(StatesWithDecision); % update the other fields of the states based on the decision;
-        {OldPid, true} -> io:format("Conflict in behind...~n"),
+        {OldPid, true} -> %io:format("Conflict in behind...~n"),
                 StatesUpdated=biker:update_states(
                     lists:map(  fun(X) ->
                             if
@@ -133,14 +133,14 @@ dummy_tob_loop(ListOfStates, Pid, RoundNbr) ->
         true ->
             race_finished;
         false ->
-            timer:sleep(?ROUNDLENGTH),
+            timer:sleep(?ROUNDLENGTH*1000),
             %io:format("Putting {~p,~p} at key: ~p~n", [RoundNbr+1, {speed, 0}, Pid]),
             biker:put(integer_to_list(Pid), {RoundNbr+1, {speed, 0}}),
             wait_for_all_decisions(length(ListOfStates), RoundNbr+1),
             StatesWithDecision = biker:update_states_decision(ListOfStates), % update the field decision in all states
             case contains_cycle(create_behind_list(StatesWithDecision)) of
                 false -> StatesUpdated = biker:update_states(StatesWithDecision); % update the other fields of the states based on the decision;
-                {OldPid, true} -> io:format("Conflict in behind...~n"),
+                {OldPid, true} -> %io:format("Conflict in behind...~n"),
                         StatesUpdated=biker:update_states(
                             lists:map(  fun(X) ->
                                     if

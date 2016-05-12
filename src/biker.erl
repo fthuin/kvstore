@@ -57,12 +57,12 @@ incrby(KeyName, Val) ->
 %% to launch a race with a unique Pid and the number of players N.
 start_race(Pid, N) ->
     %% @doc: Pid is the given PID for this node and N is the total number of nodes
-    io:format("PID:N --- ~p:~p ~n", [Pid, N]),
+    %io:format("PID:N --- ~p:~p ~n", [Pid, N]),
     Var = init_game_state(N,N,[]),
     ok = biker:put(integer_to_list(Pid), {0, {speed, 0}}),
-    io:format("~p~n", [Var]),
-    %beb:beb_loop(Var, Pid, 0), % launche the race with best effort broadcast
-    tob:tob_loop(Var, Pid, 0), % Launch the race with total order broadcast
+    %io:format("~p~n", [Var]),
+    beb:beb_loop(Var, Pid, 0), % launche the race with best effort broadcast
+    %tob:tob_loop(Var, Pid, 0), % Launch the race with total order broadcast
     {ok, start_race}.
 
 %%%===================================================================
@@ -123,7 +123,7 @@ round_timeout(OldDecision, TRef) ->
             timer:cancel(TRef),
             Decision
     after
-        ?ROUNDLENGTH ->
+        ?ROUNDLENGTH*1000 ->
             io:format("The round has timed out. Old decision: ~p~n", [OldDecision]),
             case OldDecision of
                 {RoundNbr, {speed, Nbr}} when RoundNbr >= 0 ->
@@ -203,8 +203,7 @@ calculate_new_state(State, ListOfStates) ->
             NewEnergy = OldEnergy - 0.12 * OldSpeedChoice * OldSpeedChoice;
         {_, {behind, OldPlayerChoice}} ->
             NewSpeed = (lists:nth(OldPlayerChoice, ListOfStates))#state.speed,
-            % FIXME how to implement the position
-            io:format("~p behind ~p. Position : ~p ; speed : ~p ~n", [State#state.pid, OldPlayerChoice, (lists:nth(OldPlayerChoice, ListOfStates))#state.position, (lists:nth(OldPlayerChoice, ListOfStates))#state.speed]),
+            %io:format("~p behind ~p. Position : ~p ; speed : ~p ~n", [State#state.pid, OldPlayerChoice, (lists:nth(OldPlayerChoice, ListOfStates))#state.position, (lists:nth(OldPlayerChoice, ListOfStates))#state.speed]),
             OtherPosition = (lists:nth(OldPlayerChoice, ListOfStates))#state.position + (lists:nth(OldPlayerChoice, ListOfStates))#state.speed,
             if
                  OtherPosition >= ?DISTANCETOCOVER ->
