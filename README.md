@@ -1,4 +1,4 @@
-# A biker race project in erlang
+# A biker race project in erlang using Riak
 
 This project compiles and runs with the release of erlang named "Erlang R16B03"
 and the version of riak named "Riak 2.1.4".
@@ -36,3 +36,5 @@ biker:start_race(UniquePid, NumberOfPlayers).
 ```
 
 after that, you can follow the instruction for input that will be shown.
+
+This project was graded 20/20.
